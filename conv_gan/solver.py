@@ -6,6 +6,7 @@ from torch import optim
 from torch.autograd import Variable
 from modules import Critic as Discriminator
 from modules import ResidualSumGenerator as Generator
+# from modules import ResidualGenerator as Generator
 import matplotlib.pyplot as plt
 import torch.autograd as autograd
 from plotter.plotter import Plotter
@@ -49,7 +50,7 @@ class Solver(object):
         self.g_optimizer = optim.Adam(self.generator.parameters(),
                                       self.lr, (self.beta1, self.beta2))
         self.d_optimizer = optim.Adam(self.discriminator.parameters(),
-                                      self.lr*0.1, (self.beta1, self.beta2))
+                                      self.lr*1, (self.beta1, self.beta2))
 
         if self.epoch:
             g_path = os.path.join(self.model_path, 'generator-%d.pkl' % self.epoch)
@@ -128,7 +129,7 @@ class Solver(object):
 
                 g_losses = []
                 #===================== Train G =====================#
-                for g_batch in range(10):
+                for g_batch in range(4):
                     noise = self.to_variable(torch.randn(batch_size, self.z_dim))
 
                     # Train G so that D recognizes G(z) as real.
@@ -205,7 +206,8 @@ def calc_gradient_penalty(netD, real_data, fake_data):
 
     if use_cuda:
         interpolates = interpolates.cuda(gpu)
-    interpolates = autograd.Variable(interpolates, requires_grad=True)
+    interpolates = autograd.Variable(interpolates, requires_grad=True)#,
+                                     # _grad=True)
 
     disc_interpolates = netD(interpolates)
 

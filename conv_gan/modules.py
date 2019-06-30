@@ -59,7 +59,7 @@ class ResidualGenerator(nn.Module):
         numStartingFeatures = 512
         startingDimensions = 4, 4
         try:
-            out = out.view(64, numStartingFeatures, *startingDimensions)
+            out = out.view(32, numStartingFeatures, *startingDimensions)
         except Exception as e:
             print(e)
 
@@ -155,29 +155,31 @@ class ResidualSumGenerator(nn.Module):
         self.fc = nn.Linear(z_dim, self.startingDimension[0] * self.startingDimension[1] * self.startingFeatures)
 
         # residual_sizes = [256, 384, 448, 480, 496]
-        # residual_sizes = [0] * 10
-        residual_sizes = [512, 768, 896, 960]
+        residual_sizes = [0] * 10
+        # residual_sizes = [512, 768, 896, 960]
 
         self.conv_modules = [nn.Sequential(
-            nn.ConvTranspose2d(self.startingFeatures // (2 ** n),
-                               self.startingFeatures // (2 ** n),
+            nn.ConvTranspose2d(self.startingFeatures // (2 ** (n+1)),
+                               self.startingFeatures // (2 ** (n+1)),
                                kernel_size=3, stride=1, padding=1
                                ).cuda(),
-            nn.LeakyReLU(0.05),
-            nn.ConvTranspose2d(self.startingFeatures // (2 ** n),
-                               self.startingFeatures // (2 ** n),
-                               kernel_size=3, stride=1, padding=1
-                               ).cuda(),
-            nn.LeakyReLU(0.05)
-            )
+            nn.LeakyReLU(0.05))
+            # nn.ConvTranspose2d(self.startingFeatures // (2 ** (n + 1)),
+            #                    self.startingFeatures // (2 ** (n + 1)),
+            #                    kernel_size=3, stride=1, padding=1
+            #                    ).cuda(),
+            # nn.LeakyReLU(0.05)
+            # )
             for n in range(self.n_blocks)
         ]
+        self.conv_modules = nn.Sequential(*self.conv_modules)
         self.blocks = [
             SummingResidualDeconvBlock(self.startingFeatures//(2**n),
                                        self.startingFeatures//(2**(n+1)),
                                        size=self.startingDimension[0]*(2**(n+1)),
                                        residual_size=residual_sizes[n],
-                                       conv_module=self.conv_modules[n])
+                                       conv_module=self.conv_modules[n],
+                                       bn= n!=self.n_blocks-1)
             for n in range(self.n_blocks)
         ]
 

@@ -16,7 +16,7 @@ class ImageFolder(data.Dataset):
         for path, dirnames, filenames in os.walk(root):
             if path.startswith(root):
                 self.image_paths += [os.path.join(path, filename) for filename in filenames]
-        self.image_paths = [path for path in self.image_paths if path[-4:] == ".png"]
+        self.image_paths = [path for path in self.image_paths if path[-4:] == ".jpg"]
         self.transform = transform
         
     def __getitem__(self, index):
