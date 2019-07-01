@@ -154,8 +154,8 @@ class ResidualSumGenerator(nn.Module):
 
         self.fc = nn.Linear(z_dim, self.startingDimension[0] * self.startingDimension[1] * self.startingFeatures)
 
-        # residual_sizes = [256, 384, 448, 480, 496]
-        residual_sizes = [0] * 10
+        residual_sizes = [256, 384, 448, 480, 496]
+        # residual_sizes = [0] * 10
         # residual_sizes = [512, 768, 896, 960]
 
         self.conv_modules = [nn.Sequential(

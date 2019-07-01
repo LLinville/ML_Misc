@@ -100,6 +100,8 @@ class Solver(object):
                     continue
 
                 # self.plotter.draw_kernels(self.discriminator)
+                for p in netD.parameters():
+                    p.requires_grad = True
                 #===================== Train D =====================#
                 images = self.to_variable(images)
                 images.retain_grad()
@@ -120,7 +122,7 @@ class Solver(object):
                 gp_loss = calc_gradient_penalty(self.discriminator, images, fake_images)
 
                 # Backprop + optimize
-                d_loss = real_loss + fake_loss + gp_loss
+                d_loss = real_loss + fake_loss# + gp_loss
                 self.reset_grad()
                 d_loss.backward()
                 self.d_optimizer.step()
@@ -128,6 +130,8 @@ class Solver(object):
                     self.plotter.draw_activations(fake_images.grad[0], original=fake_images[0])
 
                 g_losses = []
+                for p in netD.parameters():
+                    p.requires_grad = False
                 #===================== Train G =====================#
                 for g_batch in range(4):
                     noise = self.to_variable(torch.randn(batch_size, self.z_dim))

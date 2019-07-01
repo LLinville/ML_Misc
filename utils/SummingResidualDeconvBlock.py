@@ -22,12 +22,18 @@ class SummingResidualDeconvBlock(nn.Module):
         self.lrelu = nn.LeakyReLU(0.05)
 
         self.upsample = nn.Upsample(size=size, mode='bilinear')
-        self.deconv = nn.ConvTranspose2d(c_in, c_out, k_size, stride, pad).cuda()
+        # self.deconv = nn.ConvTranspose2d(c_in, c_out, k_size, stride, pad).cuda()
+        self.deconv = nn.Sequential(
+            self.upsample,
+            nn.ConvTranspose2d(c_in, c_out, 3, 1, 1).cuda(),
+            self.bn,
+            self.lrelu
+        )
         # residual_size = sum()
         if residual_size > 0:
-            self.residual_conv = nn.Conv2d(residual_size, c_out, 1, stride=1, padding=0).cuda()
+            self.residual_conv = nn.ConvTranspose2d(residual_size, c_out, 1, stride=1, padding=0).cuda()
         else:
-            self.residual_conv = nn.Conv2d(c_in, c_out, 1, stride=1, padding=0).cuda()
+            self.residual_conv = nn.ConvTranspose2d(c_in, c_out, 1, stride=1, padding=0).cuda()
 
     def forward(self, residuals, x):
         # x_upsampled = self.upsample(x)
@@ -35,7 +41,7 @@ class SummingResidualDeconvBlock(nn.Module):
         # upsampled_residuals = self.upsample(torch.cat((residuals, x), dim=1))
         try:
             upsampled_residuals = self.upsample(residuals)
-            residuals_after_conv = self.residual_conv(upsampled_residuals)
-            return self.lrelu(after_conv_deconved + residuals_after_conv), upsampled_residuals
+            residuals_after_conv = self.lrelu(self.bn(self.residual_conv(upsampled_residuals)))
+            return self.lrelu(self.bn(after_conv_deconved + residuals_after_conv)), upsampled_residuals
         except Exception as e:
             return after_conv_deconved, residuals
