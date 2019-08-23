@@ -4,9 +4,9 @@ import torchvision
 import os
 from torch import optim
 from torch.autograd import Variable
-from modules import Critic as Discriminator
-from modules import ResidualSumGenerator as Generator
-# from modules import ResidualGenerator as Generator
+from modules import Discriminator as Discriminator
+# from modules import ResidualSumGenerator as Generator
+from modules import ResidualGenerator as Generator
 import matplotlib.pyplot as plt
 import torch.autograd as autograd
 from plotter.plotter import Plotter
@@ -100,7 +100,7 @@ class Solver(object):
                     continue
 
                 # self.plotter.draw_kernels(self.discriminator)
-                for p in netD.parameters():
+                for p in self.discriminator.parameters():
                     p.requires_grad = True
                 #===================== Train D =====================#
                 images = self.to_variable(images)
@@ -111,18 +111,19 @@ class Solver(object):
                 # Train D to recognize real images as real.
                 outputs = self.discriminator(images)
                 real_loss = torch.mean((outputs - 1) ** 2)      # L2 loss instead of Binary cross entropy loss (this is optional for stable training)
-
+                # real_loss = torch.mean(outputs - 1)
                 # Train D to recognize fake images as fake.
                 fake_images = self.generator(noise)
                 fake_images.retain_grad()
                 outputs = self.discriminator(fake_images)
                 fake_loss = torch.mean(outputs ** 2)
+                # fake_loss = torch.mean(outputs)
 
                 # gradient penalty
                 gp_loss = calc_gradient_penalty(self.discriminator, images, fake_images)
 
                 # Backprop + optimize
-                d_loss = real_loss + fake_loss# + gp_loss
+                d_loss = fake_loss + real_loss + gp_loss
                 self.reset_grad()
                 d_loss.backward()
                 self.d_optimizer.step()
@@ -130,10 +131,10 @@ class Solver(object):
                     self.plotter.draw_activations(fake_images.grad[0], original=fake_images[0])
 
                 g_losses = []
-                for p in netD.parameters():
+                for p in self.discriminator.parameters():
                     p.requires_grad = False
                 #===================== Train G =====================#
-                for g_batch in range(4):
+                for g_batch in range(5):
                     noise = self.to_variable(torch.randn(batch_size, self.z_dim))
 
                     # Train G so that D recognizes G(z) as real.

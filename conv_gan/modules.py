@@ -1,8 +1,85 @@
 import torch.nn as nn
+import torch.nn.functional as F
+from utils.plotter.plotter import Plotter
 from utils.ResidualDeconvBlock import ResidualDeconvBlock
 from utils.ResidualConvBlock import ResidualConvBlock
 from utils.SummingResidualDeconvBlock import SummingResidualDeconvBlock
 import torch
+
+
+def conv(c_in, c_out, k_size, stride=2, pad=1, bn=True):
+    """Custom convolutional layer for simplicity."""
+    layers = []
+    layers.append(nn.Conv2d(c_in, c_out, k_size, stride, pad))
+    if bn:
+        layers.append(nn.BatchNorm2d(c_out))
+    return nn.Sequential(*layers)
+
+
+class Discriminator_Vanilla(nn.Module):
+    """Discriminator containing 4 convolutional layers."""
+
+    def __init__(self, image_size=128, conv_dim=32):
+        super(Discriminator_Vanilla, self).__init__()
+        self.conv1 = conv(3, conv_dim, 4, bn=False)
+        self.conv2 = conv(conv_dim, conv_dim * 2, 4)
+        self.conv3 = conv(conv_dim * 2, conv_dim * 4, 4)
+        self.conv4 = conv(conv_dim * 4, conv_dim * 4, 4)
+        self.conv5 = conv(conv_dim * 4, conv_dim * 8, 4)
+        self.fc = conv(conv_dim * 8, 1, int(image_size / 32), 1, 0, False)
+
+    def forward(self, x):  # If image_size is 64, output shape is as below.
+
+        out = F.leaky_relu(self.conv1(x), 0.05)  # (?, 64, 32, 32)
+        out = F.leaky_relu(self.conv2(out), 0.05)  # (?, 128, 16, 16)
+        out = F.leaky_relu(self.conv3(out), 0.05)  # (?, 256, 8, 8)
+        out = F.leaky_relu(self.conv4(out), 0.05)  # (?, 512, 4, 4)
+        out = F.leaky_relu(self.conv5(out), 0.05)
+        out = self.fc(out).squeeze()
+        return out
+
+
+class Discriminator(nn.Module):
+    """Discriminator containing 4 convolutional layers."""
+
+    def __init__(self, image_size=128, conv_dim=32):
+        self.plotter = Plotter()
+        self.iter = 0
+        super(Discriminator, self).__init__()
+        # self.conv1 = conv()
+
+        self.conv1 = nn.Sequential(
+            conv(3, conv_dim, 4, bn=False))  # , conv(conv_dim, conv_dim * 2, 1, stride=1, pad=0))
+        # self.conv2 = nn.Sequential(conv(conv_dim*2, conv_dim*2, 4, bn=False), conv(conv_dim * 2, conv_dim * 4, 1, stride=1, pad=0))
+        # self.conv3 = nn.Sequential(conv(conv_dim*4, conv_dim*4, 4, bn=False), conv(conv_dim * 4, conv_dim * 8, 1, stride=1, pad=0))
+        # self.conv4 = nn.Sequential(conv(conv_dim*8, conv_dim*8, 4, bn=False), conv(conv_dim * 8, conv_dim * 16, 1, stride=1, pad=0))
+        # self.conv5 = nn.Sequential(conv(conv_dim*16, conv_dim*16, 4, bn=False), conv(conv_dim * 16, conv_dim * 32, 1, stride=1, pad=0))
+        self.conv2 = conv(conv_dim, conv_dim * 2, 4)
+        self.conv3 = conv(conv_dim * 2, conv_dim * 4, 4)
+        self.conv4 = conv(conv_dim * 4, conv_dim * 8, 4)
+        self.conv5 = conv(conv_dim * 8, conv_dim * 16, 4)
+        # self.fc = conv(conv_dim * 16, 1, conv_dim * 16, 1, 0, False)
+
+        self.fc1 = nn.Linear(conv_dim * 16 * 4 * 2, 32)
+        # self.fc1 = nn.Linear(4608, 1)
+        self.fc2 = nn.Linear(32, 1)
+
+    def forward(self, x):  # If image_size is 64, output shape is as below.
+
+        out = F.leaky_relu(self.conv1(x), 0.05)  # (?, 64, 32, 32)
+        out = F.leaky_relu(self.conv2(out), 0.05)  # (?, 128, 16, 16)
+        self.iter += 1
+        # print(self.iter)
+        # if self.iter % 101 == 0:
+        #     self.plotter.draw_activations(out, original=x)
+        out = F.leaky_relu(self.conv3(out), 0.05)  # (?, 256, 8, 8)
+        out = F.leaky_relu(self.conv4(out), 0.05)  # (?, 512, 4, 4)
+        # out = F.leaky_relu(self.conv5(out), 0.05)
+        flattened = out.view(out.size(0), -1)
+        out = self.fc1(flattened).squeeze()
+        out = self.fc2(out)
+        return out
+
 
 class Critic(nn.Module):
     # Wasserstein critic, no minimum or maximum loss
@@ -25,11 +102,13 @@ class Critic(nn.Module):
 
         self.fc1 = nn.Linear(32768, 32)
         self.fc2 = nn.Linear(32, 1)
+        self.relu = nn.LeakyReLU(0.05)
+        self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
-        out = self.residual_downconv(x)
+        out = self.relu(self.residual_downconv(x))
         flattened = out.view(out.size(0), -1)
-        return self.fc2(self.fc1(flattened))
+        return self.sigmoid(self.fc2(self.relu(self.fc1(flattened))))
 
 class ResidualGenerator(nn.Module):
     """Generator containing 7 deconvolutional layers."""

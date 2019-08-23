@@ -42,6 +42,7 @@ class SummingResidualDeconvBlock(nn.Module):
         try:
             upsampled_residuals = self.upsample(residuals)
             residuals_after_conv = self.lrelu(self.bn(self.residual_conv(upsampled_residuals)))
-            return self.lrelu(self.bn(after_conv_deconved + residuals_after_conv)), upsampled_residuals
+            return self.lrelu(after_conv_deconved + residuals_after_conv), upsampled_residuals
         except Exception as e:
+            print(e)
             return after_conv_deconved, residuals

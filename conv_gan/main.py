@@ -38,7 +38,7 @@ if __name__ == '__main__':
     
     # training hyper-parameters
     parser.add_argument('--num_epochs', type=int, default=2000)
-    parser.add_argument('--batch_size', type=int, default=32)
+    parser.add_argument('--batch_size', type=int, default=128)
     parser.add_argument('--sample_size', type=int, default=100)
     parser.add_argument('--num_workers', type=int, default=0)
     parser.add_argument('--lr', type=float, default=0.00005)

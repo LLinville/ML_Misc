@@ -37,10 +37,12 @@ def get_loader(image_path, image_size, batch_size, num_workers=2):
     
     transform = transforms.Compose([
                     # transforms.RandomResizedCrop((0.8))
+                    transforms.CenterCrop(150),
                     transforms.Scale(image_size),
                     transforms.RandomHorizontalFlip(),
+                    transforms.Grayscale(),
                     transforms.ToTensor(),
-                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+                    transforms.Normalize([0.5], [0.5])])
     
     dataset = ImageFolder(image_path, transform)
     data_loader = data.DataLoader(dataset=dataset,
